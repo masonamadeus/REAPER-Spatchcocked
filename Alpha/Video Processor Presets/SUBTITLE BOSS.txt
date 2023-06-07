@@ -1,0 +1,147 @@
+// SUBTITLE BOSS
+font="Arial";
+//@param1:lineSpacing 'Subtitle Spacing' 20 1 80 40 1
+//@param2:size 'text height' 0.04 0.01 0.1 0.05 0.001
+
+//@param4:fgr 'text red' 1.0 0 1 0.5 0.01
+//@param5:fgg 'text green' 1.0 0 1 0.5 0.01
+//@param6:fgb 'text blue' 1.0 0 1 0.5 0.01
+//@param7:fgc 'text bright' 1.0 0 1 0.5 0.01
+//@param8:fga 'text opacity' 1.0 0 1 0.5 0.01
+
+//@param10:bgr 'bg red' 0.75 0 1 0.5 0.01
+//@param11:bgg 'bg green' 0.75 0 1 0.5 0.01
+//@param12:bgb 'bg blue' 0.75 0 1 0.5 0.01
+//@param13:bgc 'bg bright' 0.75 0 1 0.5 0.01
+//@param14:bga 'bg opacity' 0.5 0 1 0.5 0.01
+
+//@param16:border 'bg padding' 0.1 0 1 0.5 0.01
+
+// black to 100% transparent 
+colorspace="RGBA";
+input_info(0,project_w,project_h)?(
+  gfx_img_resize(-1,project_w,project_h);
+  gfx_blit(0);
+  gfx_evalrect(0,0,project_w,project_h,"r+g+b==0?a=0");
+);
+
+//lineSpacing = 20;
+//num_speakers = num_speakers + 1;
+
+// MEASURE LINE WIDTH
+gfx_setfont(size*project_h,font);
+#testStr = "W";
+gfx_str_measure(#testStr,charW,charH);
+charPerLine = ceil(project_w/charW);
+
+// COUNT NUMBER OF INPUTS
+num_tracks = input_track_count();
+
+// loop thru input tracks and XXXtable those that match ST_XX
+#matchStr = "ST_*";
+filter = -10000;
+
+
+
+//offX = 0;
+//offY = 0;
+inc = 500; // INTEGERS FOR STRINGS
+prevBoxH = 0;
+prevBoxW = 0;
+//boxH = 0;
+//boxW = 0;
+ 
+inputTk = 0;
+ 
+loop(num_tracks,
+    string = inc+2;
+    spkString = inc+1;
+    input_get_name(inputTk,#FirstCheck);
+    // if the input has a track name, that's the speaker
+    firstSTTrack = input_match(inputTk,#matchStr);
+    firstSTTrack != filter ?
+    (
+      // see if the next item is dialog
+      inputChk = input_next_item(inputTk);
+      input_get_name(inputChk,#SecondCheck);
+      
+      input_get_name(inputChk,string);
+  
+      //compare start of the next input with the ST code
+      str_setlen(string,3);
+      isDialog = strcmp(string,"ST_");
+      isDialog == 0 ?
+      //if equal, skip ahead
+      (
+        inputTk = inputTk + 1;
+      )://else,
+      (
+        // set the spkString as the speaker name
+        input_get_name(inputTk,spkString);
+        str_delsub(spkString,0,3);
+        strcat(spkString,": ");
+  
+        inputTk = inputChk;
+        input_get_name(inputTk, string);
+        
+        textLength = strlen(string);
+          
+        textLength > 0 ?
+          (
+            inputChk = inputTk;
+            spkCheck = strlen(spkString);
+            spkCheck > 5 ? 
+            (
+              str_insert(string,spkString,0);
+            );
+            // PROCESS 'string' INTO SUBTITLES
+            textLength = strlen(string);
+            numLines = ceil(textLength/charPerLine);
+            lineLength = ceil(textLength/numLines);
+            breakpoint = lineLength;
+        
+            numLines > 1 ?
+          
+            loop(numLines-1,
+              //find a space character
+              while ( str_getchar(string,breakpoint) !=32 )
+              (
+                breakpoint=breakpoint+1;
+              );
+            
+              // break string and remove space
+              str_delsub(string,breakpoint,1);
+              str_insert(string,"\n",breakpoint);
+            
+              // adjust breakpoint for next line
+              breakpoint=lineLength+breakpoint;
+            );
+            
+        
+            //Measure the string again because now we gotta draw a background
+            gfx_str_measure(string,txtw,txth);
+        
+            // Add padding to box
+            b = (border*txth);
+            boxW = (txtw+b*2);
+            boxH = (txth+b*2);
+          
+            //Offset of each subtitle block
+            offX = (project_w-boxW)/2;
+            offY = project_h - boxH - (prevBoxH*1) - lineSpacing;
+        
+            //backdrop 
+            gfx_set(bgc*bgr,bgc*bgg,bgc*bgb,bga);
+            bga>0?gfx_fillrect(offX+b, offY, boxW, boxH);
+            //text
+            gfx_set(fgc*fgr,fgc*fgg,fgc*fgb,fga);
+            gfx_str_draw(string,offX+b*2,offY+b);
+            
+            prevBoxH=(prevBoxH)+boxH+lineSpacing;
+          );
+        );
+        inc = inc+3;
+      
+    );
+    
+);
